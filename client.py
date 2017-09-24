@@ -61,7 +61,7 @@ if READY_CHECK == 'READY':
                     HTML_DATA.append(TEMP)
                     HTML_STRING = " ".join(HTML_DATA)
                     SPLIT_INDEX += 1
-            TRANSFER_DATA = HTML_STRING.encode('utf-8')         
+            TRANSFER_DATA = HTML_STRING.encode('utf-8')
             S2.send(TRANSFER_DATA)
             STATE = 3
 
