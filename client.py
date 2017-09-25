@@ -2,6 +2,9 @@ import sys
 import socket
 from urllib.parse import urlparse
 
+if len(sys.argv) == 1:
+    sys.exit('No acceptable arguments passed. Quitting...')
+
 
 ARGS = sys.argv[1]
 PORT = 80
@@ -11,7 +14,6 @@ HTML_DATA = []
 HTML_STRING = ""
 TEMP = ""
 STATE = 1
-
 
 if 'http://' not in ARGS:
     URL_BUILDER.append('http://')
