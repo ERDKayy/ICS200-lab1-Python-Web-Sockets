@@ -2,9 +2,6 @@ import sys
 import socket
 from urllib.parse import urlparse
 
-if len(sys.argv) == 1:
-    sys.exit('No acceptable arguments passed. Quitting...')
-
 
 ARGS = sys.argv[1]
 PORT = 80
@@ -14,6 +11,7 @@ HTML_DATA = []
 HTML_STRING = ""
 TEMP = ""
 STATE = 1
+
 
 if 'http://' not in ARGS:
     URL_BUILDER.append('http://')
@@ -84,9 +82,9 @@ if READY_CHECK == 'READY':
             if 'ICS 200 HTML CONVERT COMPLETE' in STATE_3_DECODED:
                 STATE_3_DECODED = STATE_3_DECODED.split('ICS 200 HTML CONVERT COMPLETE')
                 STATE_3_DECODED = "".join(STATE_3_DECODED)
-                print(STATE_3_DECODED, end='')
+                print(STATE_3_DECODED, end='\n')
                 STATE = 4
             else:
-                print(STATE_3_DECODED, end='')
+                print(STATE_3_DECODED, end="")
 S1.close()
 S2.close()
