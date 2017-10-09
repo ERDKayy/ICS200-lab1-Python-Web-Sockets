@@ -2,8 +2,8 @@ import sys
 import socket
 from urllib.parse import urlparse
 
-
-ARGS = sys.argv[1]
+ARGS = 'http://rtvm.cs.camosun.bc.ca/ics200/lab1test2.html'
+#ARGS = sys.argv[1]
 PORT = 80
 HTML2TEXTHOST = 'rtvm.cs.camosun.bc.ca'
 URL_BUILDER = []
@@ -42,49 +42,45 @@ S1.send(GET_REQUEST)
 if READY_CHECK == 'READY':
     while STATE != 4:
         if STATE == 1:
-            STATE_1_DATA = S1.recv(1024)
-            STATE_1_DECODE = STATE_1_DATA.decode('utf-8')
-            SPLIT_DATA = STATE_1_DECODE.split()
-            if '<HTML>' in SPLIT_DATA:
-                STATE = 2
+            CURRENT_BLOCK = S1.recv(1024)
+            CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+            LAST_BLOCK = ''
+            while not '<HTML>' in CURRENT_BLOCK.upper():
+                COMBINED_BLOCK = LAST_BLOCK + CURRENT_BLOCK
+                if '<HTML>' in COMBINED_BLOCK:
+                    CURRENT_BLOCK = COMBINED_BLOCK
+                else:
+                    LAST_BLOCK = CURRENT_BLOCK
+                    CURRENT_BLOCK = S1.recv(1024)
+                    CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+            STATE = 2
 
         if STATE == 2:
-            INDEX = 0
-            while SPLIT_DATA[INDEX] != "<HTML>":
-                INDEX += 1
-            SPLIT_INDEX = INDEX
-            while SPLIT_DATA[INDEX] != "</HTML>":
-                INDEX += 1
-                CURR_INDEX = INDEX
-                while SPLIT_INDEX <= CURR_INDEX:
-                    TEMP = SPLIT_DATA[SPLIT_INDEX]
-                    HTML_DATA.append(TEMP)
-                    HTML_STRING = " ".join(HTML_DATA)
-                    SPLIT_INDEX += 1
-            TRANSFER_DATA = HTML_STRING.encode('utf-8')
-            S2.send(TRANSFER_DATA)
+            CURRENT_BLOCK_CAPITALIZED = CURRENT_BLOCK.upper()
+            CURRENT_BLOCK_CAPITALIZED = CURRENT_BLOCK.split()
+            CURRENT_BLOCK = CURRENT_BLOCK.split()
+            INDEX = CURRENT_BLOCK_CAPITALIZED.index( '<HTML>' )
+            CURRENT_BLOCK = CURRENT_BLOCK[INDEX:len(CURRENT_BLOCK)]
+            CURRENT_BLOCK = ' '.join(CURRENT_BLOCK)
+            S2.send(CURRENT_BLOCK.encode('utf-8'))
             STATE = 3
 
         if STATE == 3:
-            STATE_3_DATA = S2.recv(1024)
-            FIRST_BLOCK = STATE_3_DATA
-            CURRENT_BLOCK = FIRST_BLOCK
-            STATE_3_DATA = S2.recv(1024)
-
-            if STATE_3_DATA != FIRST_BLOCK:
-                LAST_BLOCK = CURRENT_BLOCK
-                CURRENT_BLOCK = STATE_3_DATA
-
-            FIRST_BLOCK = FIRST_BLOCK.decode('utf-8')
+            COMBINED_BLOCK = ''
+            LAST_BLOCK = ''
+            CURRENT_BLOCK = S2.recv(1024)
             CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
-            STATE_3_DECODED = FIRST_BLOCK + CURRENT_BLOCK
-
-            if 'ICS 200 HTML CONVERT COMPLETE' in STATE_3_DECODED:
-                STATE_3_DECODED = STATE_3_DECODED.split('ICS 200 HTML CONVERT COMPLETE')
-                STATE_3_DECODED = "".join(STATE_3_DECODED)
-                print(STATE_3_DECODED, end='\n')
-                STATE = 4
-            else:
-                print(STATE_3_DECODED, end="")
+            while not 'ICS 200 HTML CONVERT COMPLETE' in CURRENT_BLOCK:
+                print(CURRENT_BLOCK, end='')
+                COMBINED_BLOCK = LAST_BLOCK + CURRENT_BLOCK
+                if 'ICS 200 HTML CONVERT COMPLETE' in COMBINED_BLOCK:
+                    break
+                CURRENT_BLOCK = LAST_BLOCK
+                CURRENT_BLOCK = S2.recv(1024)
+                CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+            CURRENT_BLOCK = CURRENT_BLOCK.split('ICS 200 HTML CONVERT COMPLETE')
+            CURRENT_BLOCK = ''.join(CURRENT_BLOCK)
+            print(CURRENT_BLOCK, end='')
+        STATE = 4
 S1.close()
 S2.close()
