@@ -32,55 +32,91 @@ S1.connect((HOST, PORT))
 S2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 S2.connect((HTML2TEXTHOST, 10010))
 
-READY_CHECK = S2.recv(1024)
-READY_CHECK = READY_CHECK.decode('utf-8')
-
 GET_REQUEST = 'GET ' + RESOURCE +' HTTP/1.1\nHost: ' + HOST + '\n\n'
 GET_REQUEST = GET_REQUEST.encode('utf-8')
 S1.send(GET_REQUEST)
 
-if READY_CHECK == 'READY':
-    while STATE != 4:
-        if STATE == 1:
-            CURRENT_BLOCK = S1.recv(1024)
-            CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
-            LAST_BLOCK = ''
-            while not '<HTML>' in CURRENT_BLOCK.upper():
-                COMBINED_BLOCK = LAST_BLOCK + CURRENT_BLOCK
-                if '<HTML>' in COMBINED_BLOCK:
-                    CURRENT_BLOCK = COMBINED_BLOCK
-                else:
-                    LAST_BLOCK = CURRENT_BLOCK
+
+while STATE != 4:
+    if STATE == 1:
+        CURRENT_BLOCK = S1.recv(1024)
+        CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+        LAST_BLOCK = ''
+        while not '<HTML>' in CURRENT_BLOCK.upper():
+            COMBINED_BLOCK = LAST_BLOCK + CURRENT_BLOCK
+            if '<HTML>' in COMBINED_BLOCK:
+                CURRENT_BLOCK = COMBINED_BLOCK
+            else:
+                LAST_BLOCK = CURRENT_BLOCK
+                CURRENT_BLOCK = S1.recv(1024)
+                CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+        STATE = 2
+
+    if STATE == 2:
+        READY_CHECK = S2.recv(1024)
+        READY_CHECK = READY_CHECK.decode('utf-8')
+        if READY_CHECK == 'READY':
+            while STATE == 2:
+                if '<HTML>' in CURRENT_BLOCK.upper():
+                    if '</HTML>' in CURRENT_BLOCK.upper():
+                        CURRENT_BLOCK = CURRENT_BLOCK.split()
+                        INDEX = CURRENT_BLOCK.index('<HTML>')
+                        INDEX2 = CURRENT_BLOCK.index('</HTML>')
+                        CURRENT_BLOCK = CURRENT_BLOCK[INDEX:INDEX2]
+                        CURRENT_BLOCK = ' '.join(CURRENT_BLOCK)
+                        S2.send(CURRENT_BLOCK.encode('utf-8'))
+                        STATE = 3
+                        break
+                    CURRENT_BLOCK = CURRENT_BLOCK.split()
+                    INDEX = CURRENT_BLOCK.index('<HTML>')
+                    CURRENT_BLOCK = CURRENT_BLOCK[INDEX:]
+                    CURRENT_BLOCK = ' '.join(CURRENT_BLOCK)
+                    S2.send(CURRENT_BLOCK.encode('utf-8'))
                     CURRENT_BLOCK = S1.recv(1024)
                     CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
-            STATE = 2
 
-        if STATE == 2:
-            CURRENT_BLOCK_CAPITALIZED = CURRENT_BLOCK.upper()
-            CURRENT_BLOCK_CAPITALIZED = CURRENT_BLOCK.split()
-            CURRENT_BLOCK = CURRENT_BLOCK.split()
-            INDEX = CURRENT_BLOCK_CAPITALIZED.index( '<HTML>' )
-            CURRENT_BLOCK = CURRENT_BLOCK[INDEX:len(CURRENT_BLOCK)]
-            CURRENT_BLOCK = ' '.join(CURRENT_BLOCK)
-            S2.send(CURRENT_BLOCK.encode('utf-8'))
-            STATE = 3
+                elif '</HTML>' in CURRENT_BLOCK.upper():
+                    CURRENT_BLOCK = CURRENT_BLOCK.split()
+                    INDEX = CURRENT_BLOCK.index('</HTML>')
+                    CURRENT_BLOCK = CURRENT_BLOCK[0:INDEX]
+                    CURRENT_BLOCK = ' '.join(CURRENT_BLOCK)
+                    S2.send(CURRENT_BLOCK.encode('utf-8'))
+                    STATE = 3
+                    break
 
-        if STATE == 3:
-            COMBINED_BLOCK = ''
-            LAST_BLOCK = ''
+                else:
+                    S2.send(CURRENT_BLOCK.encode('utf-8'))
+                    CURRENT_BLOCK = S1.recv(1024)
+                    CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+
+    if STATE == 3:
+        print('got into state 3')
+        LAST_BLOCK = ''
+        CURRENT_BLOCK = S2.recv(1024)
+        CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+
+        while not 'ICS 200 HTML CONVERT COMPLETE' in CURRENT_BLOCK:
+            print(CURRENT_BLOCK)
             CURRENT_BLOCK = S2.recv(1024)
             CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
-            while not 'ICS 200 HTML CONVERT COMPLETE' in CURRENT_BLOCK:
-                print(CURRENT_BLOCK, end='')
-                COMBINED_BLOCK = LAST_BLOCK + CURRENT_BLOCK
-                if 'ICS 200 HTML CONVERT COMPLETE' in COMBINED_BLOCK:
-                    break
-                CURRENT_BLOCK = LAST_BLOCK
-                CURRENT_BLOCK = S2.recv(1024)
-                CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
-            CURRENT_BLOCK = CURRENT_BLOCK.split('ICS 200 HTML CONVERT COMPLETE')
-            CURRENT_BLOCK = ''.join(CURRENT_BLOCK)
-            print(CURRENT_BLOCK, end='')
+        CURRENT_BLOCK = CURRENT_BLOCK.split('ICS 200 HTML CONVERT COMPLETE')
+        CURRENT_BLOCK = ''.join(CURRENT_BLOCK)
+        print(CURRENT_BLOCK)
         STATE = 4
+
+        '''
+        CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+        while not 'ICS 200 HTML CONVERT COMPLETE' in CURRENT_BLOCK:
+            print(CURRENT_BLOCK, end='')
+            COMBINED_BLOCK = LAST_BLOCK + CURRENT_BLOCK
+            if 'ICS 200 HTML CONVERT COMPLETE' in COMBINED_BLOCK:
+                break
+            CURRENT_BLOCK = LAST_BLOCK
+            CURRENT_BLOCK = S2.recv(1024)
+            CURRENT_BLOCK = CURRENT_BLOCK.decode('utf-8')
+        CURRENT_BLOCK = CURRENT_BLOCK.split('ICS 200 HTML CONVERT COMPLETE')
+        CURRENT_BLOCK = ''.join(CURRENT_BLOCK)
+        print(CURRENT_BLOCK, end='')
+        '''
 S1.close()
 S2.close()
